@@ -5,42 +5,81 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LEGO Island Web</title>
     <style>
-        body { margin: 0; background-color: #000; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
-        canvas { border: 2px solid #555; max-width: 100%; max-height: 100%; background: #222; }
+        body { margin: 0; background-color: #000; display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; overflow: hidden; font-family: sans-serif; color: white; }
+        canvas { border: 2px solid #555; max-width: 100%; max-height: 85vh; background: #222; }
+        #picker-container { text-align: center; margin-bottom: 15px; background: #222; padding: 20px; border-radius: 8px; border: 1px solid #444; position: absolute; z-index: 10; }
+        #picker { margin-top: 10px; padding: 10px; background: #333; border: 1px solid #555; border-radius: 5px; color: white; cursor: pointer; }
+        #progress-container { width: 300px; background-color: #444; border-radius: 10px; margin-top: 15px; display: none; overflow: hidden; border: 1px solid #555; }
+        #progress-bar { width: 0%; height: 20px; background-color: #00cc44; }
     </style>
 </head>
 <body>
+
+    <div id="picker-container">
+        <div id="status">Please select your local LEGO asset folder to start</div>
+        <input type="file" id="picker" webkitdirectory directory multiple>
+        <div id="progress-container">
+            <div id="progress-bar"></div>
+        </div>
+    </div>
 
     <canvas id="canvas" oncontextmenu="event.preventDefault()"></canvas>
 
     <script type="text/javascript">
         var Module = {
+            noInitialRun: true, 
             preRun: [function() {
-                try { FS.mkdir('/LEGO'); } catch(e) {}
-                
-                // The explicit set of retail files the engine reads at boot
-                var assets = [
-                    'LEGO1.WLV', 'ISLAND.WLV', 'INFOMAIN.WLV', 
-                    'SNDANIM.SI', 'LEGO1.SI', 'ISLAND.SI'
-                ];
-                
-                assets.forEach(function(file) {
-                    var targetUrl = 'https://archive.org' + file;
-                    
-                    FS.createLazyFile(
-                        '/LEGO', 
-                        file, 
-                        // Bypasses browser security locks by routing through a proxy
-                        'https://corsproxy.io?' + encodeURIComponent(targetUrl), 
-                        true, 
-                        false
-                    );
-                });
+                try { FS.mkdir('/LEGO'); } catch(err) {}
             }],
             postRun: [],
             canvas: (function() { return document.getElementById('canvas'); })(),
             setStatus: function(text) { console.log(text); }
         };
+
+        function startEngine() {
+            document.getElementById('picker-container').style.display = 'none';
+            if (typeof shouldRunNow === 'function') { shouldRunNow(); } 
+            else if (Module.run) { Module.run(); }
+        }
+
+        document.getElementById('picker').addEventListener('change', function(e) {
+            var files = e.target.files;
+            if (files.length === 0) return;
+
+            try { FS.mkdir('/LEGO'); } catch(err) {}
+            document.getElementById('picker').style.display = 'none';
+            document.getElementById('progress-container').style.display = 'block';
+            
+            var loadedCount = 0;
+            var totalFiles = files.length;
+            var progressBar = document.getElementById('progress-bar');
+
+            for (var i = 0; i < totalFiles; i++) {
+                var file = files[i];
+                var filename = file.name.toUpperCase();
+                
+                (function(f, name) {
+                    var reader = new FileReader();
+                    reader.onload = function(event) {
+                        var arrayBuffer = event.target.result;
+                        var uint8Array = new Uint8Array(arrayBuffer);
+                        
+                        // Using explicit data array mounting to completely bypass FS.createLazyFile errors
+                        FS.createDataFile('/LEGO', name, uint8Array, true, true, true);
+                        
+                        loadedCount++;
+                        var percentage = Math.round((loadedCount / totalFiles) * 100);
+                        progressBar.style.width = percentage + '%';
+                        document.getElementById('status').innerText = "Loading: " + percentage + "% (" + loadedCount + "/" + totalFiles + " files)";
+                        
+                        if (loadedCount === totalFiles) {
+                            startEngine();
+                        }
+                    };
+                    reader.readAsArrayBuffer(f);
+                })(file, filename);
+            }
+        });
     </script>
     
     <script async type="text/javascript" src="isle.js"></script>
