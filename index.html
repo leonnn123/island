@@ -1,14 +1,4 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LEGO Island Web</title>
-    <style>
-        body { margin: 0; background-color: #000; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
-        canvas { border: 2px solid #333; max-width: 100%; max-height: 100%; }
-    </style>
-<!DOCTYPE html>
+
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -19,32 +9,75 @@
         canvas { border: 2px solid #555; max-width: 100%; max-height: 100%; background: #222; }
     </style>
 </head>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LEGO Island Web</title>
+    <style>
+        body { margin: 0; background-color: #000; display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; overflow: hidden; font-family: sans-serif; color: white; }
+        canvas { border: 2px solid #555; max-width: 100%; max-height: 85vh; background: #222; }
+        #picker { margin-bottom: 15px; padding: 10px; background: #333; border: 1px solid #555; border-radius: 5px; cursor: pointer; }
+    </style>
+</head>
 <body>
+
+    <!-- This button lets you select your local LEGO asset folder securely -->
+    <div id="controls">
+        <input type="file" id="picker" webkitdirectory directory multiple>
+        <span id="status">Please select your LEGO folder to start</span>
+    </div>
 
     <canvas id="canvas" oncontextmenu="event.preventDefault()"></canvas>
 
     <script type="text/javascript">
         var Module = {
-            preRun: [function() {
-                // Safely creates the virtual directory inside your browser context
-                try { FS.mkdir('/LEGO'); } catch(e) {}
-                
-                // The critical core file manifests required by the Emscripten build
-                var files = ['LEGO1.WLV', 'ISLAND.WLV', 'INFOMAIN.WLV', 'SNDANIM.SI', 'LEGO1.SI', 'ISLAND.SI'];
-                
-                files.forEach(function(file) {
-                    // Generates clean, zero-byte dummy arrays to bypass external server CORS blocks
-                    var dummyData = new Uint8Array(0); 
-                    FS.createDataFile('/LEGO', file, dummyData, true, true, true);
-                });
-            }],
+            preRun: [],
             postRun: [],
             canvas: (function() { return document.getElementById('canvas'); })(),
-            setStatus: function(text) { console.log("Engine State: " + text); }
+            setStatus: function(text) { console.log(text); }
         };
-    </script>
-    
-    <script async type="text/javascript" src="isle.js"></script>
 
+        // Wait for the user to pick the folder before starting the engine
+        document.getElementById('picker').addEventListener('change', function(e) {
+            var files = e.target.files;
+            if (files.length === 0) return;
+
+            document.getElementById('status').innerText = "Loading game files...";
+            
+            // Create the virtual LEGO directory inside the browser
+            try { FS.mkdir('/LEGO'); } catch(err) {}
+
+            var loadedCount = 0;
+
+            for (var i = 0; i < files.length; i++) {
+                var file = files[i];
+                // Strip subfolder names and just get the clean filename
+                var filename = file.name.toUpperCase();
+                
+                (function(f, name) {
+                    var reader = new FileReader();
+                    reader.onload = function(event) {
+                        var arrayBuffer = event.target.result;
+                        var uint8Array = new Uint8Array(arrayBuffer);
+                        
+                        // Write the real file into the WebAssembly memory virtual drive
+                        FS.createDataFile('/LEGO', name, uint8Array, true, true, true);
+                        
+                        loadedCount++;
+                        if (loadedCount === files.length) {
+                            document.getElementById('controls').style.display = 'none';
+                            // Start the game engine script
+                            var script = document.createElement('script');
+                            script.src = "isle.js";
+                            document.body.appendChild(script);
+                        }
+                    };
+                    reader.readAsArrayBuffer(f);
+                })(file, filename);
+            }
+        });
+    </script>
 </body>
 </html>
