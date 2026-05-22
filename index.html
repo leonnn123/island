@@ -5,47 +5,43 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LEGO Island Web</title>
     <style>
-        body {
-            margin: 0;
-            background-color: #000;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            overflow: hidden;
-        }
-        canvas {
-            border: 2px solid #333;
-            max-width: 100%;
-            max-height: 100%;
-        }
+        body { margin: 0; background-color: #000; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+        canvas { border: 2px solid #333; max-width: 100%; max-height: 100%; }
     </style>
 </head>
+    <title>"HAXXED LEGO ISLAND ONLINE"</title>
 <body>
 
-    <!-- This canvas element holds the game screen -->
     <canvas id="canvas" oncontextmenu="event.preventDefault()"></canvas>
 
     <script type="text/javascript">
-        // Standard Emscripten glue configuration
         var Module = {
-            preRun: [],
+            preRun: [function() {
+                // Creates a virtual LEGO folder inside the browser's memory
+                FS.mkdir('/LEGO');
+                
+                // Instructs the engine to stream the asset binaries over the web on-demand
+                var assets = [
+                    'LEGO1.WLV', 'ISLAND.WLV', 'INFOMAIN.WLV', 
+                    'SNDANIM.SI', 'LEGO1.SI', 'ISLAND.SI'
+                ];
+                
+                assets.forEach(function(file) {
+                    FS.createLazyFile(
+                        '/LEGO', 
+                        file, 
+                        'https://archive.org' + file, 
+                        true, 
+                        false
+                    );
+                });
+            }],
             postRun: [],
-            canvas: (function() {
-                var canvas = document.getElementById('canvas');
-                return canvas;
-            })(),
-            setStatus: function(text) {
-                console.log("Status: " + text);
-            },
-            totalDependencies: 0,
-            monitorRunDependencies: function(left) {
-                this.totalDependencies = Math.max(this.totalDependencies, left);
-            }
+            canvas: (function() { return document.getElementById('canvas'); })(),
+            setStatus: function(text) { console.log(text); }
         };
     </script>
     
-    <!-- Connects your pre-compiled JS web script -->
     <script async type="text/javascript" src="isle.js"></script>
 
 </body>
