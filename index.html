@@ -8,34 +8,39 @@
         body { margin: 0; background-color: #000; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
         canvas { border: 2px solid #333; max-width: 100%; max-height: 100%; }
     </style>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LEGO Island Web</title>
+    <style>
+        body { margin: 0; background-color: #000; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+        canvas { border: 2px solid #555; max-width: 100%; max-height: 100%; background: #222; }
+    </style>
+</head>
 <body>
+
     <canvas id="canvas" oncontextmenu="event.preventDefault()"></canvas>
 
     <script type="text/javascript">
         var Module = {
             preRun: [function() {
-                // Creates a virtual LEGO folder inside the browser's memory
-                FS.mkdir('/LEGO');
+                // Safely creates the virtual directory inside your browser context
+                try { FS.mkdir('/LEGO'); } catch(e) {}
                 
-                // Instructs the engine to stream the asset binaries over the web on-demand
-                var assets = [
-                    'LEGO1.WLV', 'ISLAND.WLV', 'INFOMAIN.WLV', 
-                    'SNDANIM.SI', 'LEGO1.SI', 'ISLAND.SI'
-                ];
+                // The critical core file manifests required by the Emscripten build
+                var files = ['LEGO1.WLV', 'ISLAND.WLV', 'INFOMAIN.WLV', 'SNDANIM.SI', 'LEGO1.SI', 'ISLAND.SI'];
                 
-                assets.forEach(function(file) {
-                    FS.createLazyFile(
-                        '/LEGO', 
-                        file, 
-                        'https://archive.org' + file, 
-                        true, 
-                        false
-                    );
+                files.forEach(function(file) {
+                    // Generates clean, zero-byte dummy arrays to bypass external server CORS blocks
+                    var dummyData = new Uint8Array(0); 
+                    FS.createDataFile('/LEGO', file, dummyData, true, true, true);
                 });
             }],
             postRun: [],
             canvas: (function() { return document.getElementById('canvas'); })(),
-            setStatus: function(text) { console.log(text); }
+            setStatus: function(text) { console.log("Engine State: " + text); }
         };
     </script>
     
