@@ -16,20 +16,22 @@
     <script type="text/javascript">
         var Module = {
             preRun: [function() {
-                // Creates a virtual LEGO folder inside the browser's memory
                 try { FS.mkdir('/LEGO'); } catch(e) {}
                 
-                // Essential game files required to launch the game loop
+                // The explicit set of retail files the engine reads at boot
                 var assets = [
                     'LEGO1.WLV', 'ISLAND.WLV', 'INFOMAIN.WLV', 
                     'SNDANIM.SI', 'LEGO1.SI', 'ISLAND.SI'
                 ];
                 
                 assets.forEach(function(file) {
+                    var targetUrl = 'https://archive.org' + file;
+                    
                     FS.createLazyFile(
                         '/LEGO', 
                         file, 
-                        'https://corsproxy.io?' + encodeURIComponent('https://archive.org' + file), 
+                        // Bypasses browser security locks by routing through a proxy
+                        'https://corsproxy.io?' + encodeURIComponent(targetUrl), 
                         true, 
                         false
                     );
@@ -44,3 +46,4 @@
     <script async type="text/javascript" src="isle.js"></script>
 
 </body>
+</html>
