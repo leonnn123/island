@@ -21,12 +21,30 @@
         #picker { margin-bottom: 15px; padding: 10px; background: #333; border: 1px solid #555; border-radius: 5px; cursor: pointer; }
     </style>
 </head>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LEGO Island Web</title>
+    <style>
+        body { margin: 0; background-color: #000; display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; overflow: hidden; font-family: sans-serif; color: white; }
+        canvas { border: 2px solid #555; max-width: 100%; max-height: 85vh; background: #222; }
+        #picker-container { text-align: center; margin-bottom: 15px; background: #222; padding: 20px; border-radius: 8px; border: 1px solid #444; }
+        #picker { margin-top: 10px; padding: 10px; background: #333; border: 1px solid #555; border-radius: 5px; color: white; cursor: pointer; }
+        #progress-container { width: 300px; background-color: #444; border-radius: 10px; margin-top: 15px; display: none; overflow: hidden; border: 1px solid #555; }
+        #progress-bar { width: 0%; height: 20px; background-color: #00cc44; transition: width 0.1s ease; }
+        #status { font-weight: bold; }
+    </style>
+</head>
 <body>
 
-    <!-- This button lets you select your local LEGO asset folder securely -->
-    <div id="controls">
+    <div id="picker-container">
+        <div id="status">Please select your local LEGO asset folder to start</div>
         <input type="file" id="picker" webkitdirectory directory multiple>
-        <span id="status">Please select your LEGO folder to start</span>
+        <div id="progress-container">
+            <div id="progress-bar"></div>
+        </div>
     </div>
 
     <canvas id="canvas" oncontextmenu="event.preventDefault()"></canvas>
@@ -39,21 +57,23 @@
             setStatus: function(text) { console.log(text); }
         };
 
-        // Wait for the user to pick the folder before starting the engine
         document.getElementById('picker').addEventListener('change', function(e) {
             var files = e.target.files;
             if (files.length === 0) return;
 
-            document.getElementById('status').innerText = "Loading game files...";
+            // Hide the input button and show the progress bar framework
+            document.getElementById('picker').style.display = 'none';
+            document.getElementById('progress-container').style.display = 'block';
+            document.getElementById('status').innerText = "Loading game files into browser memory...";
             
-            // Create the virtual LEGO directory inside the browser
             try { FS.mkdir('/LEGO'); } catch(err) {}
 
             var loadedCount = 0;
+            var totalFiles = files.length;
+            var progressBar = document.getElementById('progress-bar');
 
-            for (var i = 0; i < files.length; i++) {
+            for (var i = 0; i < totalFiles; i++) {
                 var file = files[i];
-                // Strip subfolder names and just get the clean filename
                 var filename = file.name.toUpperCase();
                 
                 (function(f, name) {
@@ -62,13 +82,19 @@
                         var arrayBuffer = event.target.result;
                         var uint8Array = new Uint8Array(arrayBuffer);
                         
-                        // Write the real file into the WebAssembly memory virtual drive
                         FS.createDataFile('/LEGO', name, uint8Array, true, true, true);
                         
                         loadedCount++;
-                        if (loadedCount === files.length) {
-                            document.getElementById('controls').style.display = 'none';
-                            // Start the game engine script
+                        
+                        // Calculate percentage and move the green progress bar visually
+                        var percentage = Math.round((loadedCount / totalFiles) * 100);
+                        progressBar.style.width = percentage + '%';
+                        document.getElementById('status').innerText = "Loading: " + percentage + "% (" + loadedCount + "/" + totalFiles + " files)";
+                        
+                        if (loadedCount === totalFiles) {
+                            document.getElementById('picker-container').style.display = 'none';
+                            
+                            // Boot up the compiled engine script
                             var script = document.createElement('script');
                             script.src = "isle.js";
                             document.body.appendChild(script);
