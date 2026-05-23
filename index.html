@@ -1,16 +1,30 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>LEGO Island Web Launcher</title>
-    <!-- Instantly forward the browser to isle.html -->
-    <meta http-equiv="refresh" content="0; url=isle.html">
-    <script>
-        // Backup safety redirect if the meta tag above is slow
-        window.location.replace("isle.html");
-    </script>
-</head>
-<body style="background: black; color: white; font-family: sans-serif; text-align: center; padding-top: 20%;">
-    <p>Launching LEGO Island Engine...</p>
-</body>
-</html>
+/*! coi-serviceworker v0.1.7 | MIT License | https://github.com */
+if (typeof window === 'undefined') {
+    self.addEventListener("install", () => self.skipWaiting());
+    self.addEventListener("activate", (e) => e.waitUntil(self.clients.claim()));
+    self.addEventListener("fetch", (e) => {
+        if (e.request.cache === "only-if-cached" && e.request.mode !== "same-origin") return;
+        e.respondWith(
+            fetch(e.request).then((res) => {
+                if (res.status === 0) return res;
+                const headers = new Headers(res.headers);
+                headers.set("Cross-Origin-Embedder-Policy", "require-corp");
+                headers.set("Cross-Origin-Opener-Policy", "same-origin");
+                return new Response(res.body, { status: res.status, statusText: res.statusText, headers });
+            }).catch((err) => console.error(err))
+        );
+    });
+} else {
+    (() => {
+        const script = document.currentScript;
+        if (window.crossOriginIsolated !== false) return;
+        navigator.serviceWorker.register(script.src).then((reg) => {
+            reg.addEventListener("updatefound", () => {
+                location.reload();
+            });
+            if (reg.active && !navigator.serviceWorker.controller) {
+                location.reload();
+            }
+        });
+    })();
+}
